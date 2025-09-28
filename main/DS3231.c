@@ -172,13 +172,13 @@ void DS3231_init(void)
 	
 	// Читаем состояние регистров CONTROL и STATUS
 	gpio_intr_disable(27);
-	I2C_write_read(1, &CONTROL, 1, &cont, 1);
+	I2C_write_read(&CONTROL, 1, &cont, 1);
 	cont &= ~((1 << EOSC) | (1 << BBSQW) | (1 << INTCN) | (1 << A2IE) | (1 << A1IE));
 	// ~(1 << EOSC); // Часы продолжают идти даже когда отключено внешнее питание EOSC в "0"
 	//cont |= (1 << BBSQW);
 	// На выводе SQW выключаем прямоугольный сигнал
 	uint8_t C[2] = {CONTROL, cont};
-	I2C_write(1, C, 2);
+	I2C_write(C, 2);
 }
 //===================================================================================================================
 void DS3231_set_time(uint8_t hour, uint8_t minute, uint8_t second)
@@ -194,9 +194,9 @@ void DS3231_set_time(uint8_t hour, uint8_t minute, uint8_t second)
 	ten = second / 10;
 	one = second % 10;
 	uint8_t SEC[2] = {SECONDS, ((ten << 4) | one)};
-	I2C_write(1, HOUR, 2);
-	//I2C_write(1, MIN, 2);
-	//I2C_write(1, SEC, 2);
+	I2C_write(HOUR, 2);
+	I2C_write(MIN, 2);
+	I2C_write(SEC, 2);
 }
 //===================================================================================================================
 void DS3231_set_data(uint8_t week_day, uint8_t data, uint8_t month, uint8_t year)
@@ -242,33 +242,33 @@ void DS3231_set_data(uint8_t week_day, uint8_t data, uint8_t month, uint8_t year
 	//ten = year / 10;
 	//one = year % 10;
 	uint8_t YER[2] = {YEAR, year};
-	I2C_write(1, W_day, 2);
-	I2C_write(1, Data, 2);
-	I2C_write(1, MON, 2);
-	I2C_write(1, YER, 2);
+	I2C_write(W_day, 2);
+	I2C_write(Data, 2);
+	I2C_write(MON, 2);
+	I2C_write(YER, 2);
 }
 //===================================================================================================================
 void DS3231_get_time(uint8_t *hour, uint8_t *minute, uint8_t *second)
 {
 	uint8_t hr, min, sec;
-	I2C_write_read(1, &HOURS, 1, &hr, 1);
+	I2C_write_read(&HOURS, 1, &hr, 1);
 	*hour = (((hr & 0b00110000) >> 4) * 10 + (hr & 0b00001111));
-	I2C_write_read(1, &NINUTES, 1, &min, 1);
+	I2C_write_read(&NINUTES, 1, &min, 1);
 	*minute = ((min >> 4)*10 + (min & 0b00001111));
-	I2C_write_read(1, &SECONDS, 1, &sec, 1);
+	I2C_write_read(&SECONDS, 1, &sec, 1);
 	*second = ((sec >> 4)*10 + (sec & 0b00001111));
 }
 //===================================================================================================================
 void DS3231_get_data(uint8_t *day, uint8_t *data, uint8_t *month, uint8_t *year)
 {
 	uint8_t dat, mon, yr;
-	I2C_write_read(1, &DAY, 1, day, 1);
+	I2C_write_read(&DAY, 1, day, 1);
 	
-	I2C_write_read(1, &DATA, 1, &dat, 1);
+	I2C_write_read(&DATA, 1, &dat, 1);
 	*data = ((dat >> 4)*10 + (dat & 0b00001111));
-	I2C_write_read(1, &MONTH, 1, &mon, 1);
+	I2C_write_read(&MONTH, 1, &mon, 1);
 	*month = ((mon >> 4)*10 + (mon & 0b00001111));
-	I2C_write_read(1, &YEAR, 1, &yr, 1);
+	I2C_write_read(&YEAR, 1, &yr, 1);
 	//*year = ((yr >> 4)*10 + (yr & 0b00001111));
 	*year = yr;
 }
@@ -276,11 +276,11 @@ void DS3231_get_data(uint8_t *day, uint8_t *data, uint8_t *month, uint8_t *year)
 uint8_t DS3231_get_year(void)
 {
 	uint8_t year;
-	uint8_t ten = 0;
-	uint8_t one = 0;
-	I2C_write_read(1, &YEAR, 1, &year, 1);
-	ten = (year >> 4) * 10;
-	one = year & 0b00001111;
+	//uint8_t ten = 0;
+	//uint8_t one = 0;
+	I2C_write_read(&YEAR, 1, &year, 1);
+	//ten = (year >> 4) * 10;
+	//one = year & 0b00001111;
 	//return (ten + one);
 	//return ((year >> 4)*10 + (year & 0b00001111)); // Преобразуем год
 	return year;
@@ -293,7 +293,7 @@ void DS3231_set_year(uint8_t year)
 	//uint8_t one = year % 10;
 	//uint8_t year_convert = ((ten << 4) | one);
 	uint8_t YER[2] = {YEAR, year};
-	I2C_write(1, YER, 2);
+	I2C_write(YER, 2);
 }
 //===================================================================================================================
 void DS3231_set_alarm1(int8_t sec, int8_t min, int8_t hour, int8_t data, int8_t week_day)
@@ -313,30 +313,30 @@ void DS3231_set_alarm1(int8_t sec, int8_t min, int8_t hour, int8_t data, int8_t 
 	uint8_t ten;
 	uint8_t one;
 	uint8_t DAT[2] = {CONTROL};
-	I2C_write_read(1, &CONTROL, 1, &DAT[1], 1);
+	I2C_write_read(&CONTROL, 1, &DAT[1], 1);
 	DAT[1] |= ((1 << INTCN) | (1 << A1IE)); // Включаем прерывания на ножке SQW и будильник 1
-	I2C_write(1, DAT, 2);
+	I2C_write(DAT, 2);
 	// Сбрасываем возможные прерывыния от будильников 1 и 2
 	DAT[0] = STATUS;
-	I2C_write_read(1, &STATUS, 1, &DAT[1], 1);
+	I2C_write_read(&STATUS, 1, &DAT[1], 1);
 	DAT[1] &= ~((1 << A1F) | (1 << A2F));
-	I2C_write(1, DAT, 2);
+	I2C_write(DAT, 2);
 		
 	// Звонок каждую секунду
 	if ((sec == -1) || (min == -1) || (hour == -1) || (data == -1) || (week_day == -1))
 	{
 		DAT[0] = AL1_SEC;
 		DAT[1] = 0b10000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL1_MIN;
 		DAT[1] = 0b10000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL1_HOUR;
 		DAT[1] = 0b10000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL1_DAY_DATA;
 		DAT[1] = 0b10000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 	}
 	// Звонок в назначенную секунду
 	if ((sec >= 0) || (min == -1) || (hour == -1) || (data == -1) || (week_day == -1))
@@ -345,16 +345,16 @@ void DS3231_set_alarm1(int8_t sec, int8_t min, int8_t hour, int8_t data, int8_t 
 		one = sec % 10;
 		DAT[0] = AL1_SEC;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL1_MIN;
 		DAT[1] = 0b10000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL1_HOUR;
 		DAT[1] = 0b10000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL1_DAY_DATA;
 		DAT[1] = 0b10000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 	}
 	// Звонок в назначенную минуту и секунду
 	if ((sec >= 0) || (min >= 0) || (hour == -1) || (data == -1) || (week_day == -1))
@@ -367,13 +367,13 @@ void DS3231_set_alarm1(int8_t sec, int8_t min, int8_t hour, int8_t data, int8_t 
 		one = min % 10;
 		DAT[0] = AL1_MIN;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL1_HOUR;
 		DAT[1] = 0b10000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL1_DAY_DATA;
 		DAT[1] = 0b10000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 	}
 	// Звонок в назначенную секунду, минуту и час
 	if ((sec >= 0) || (min >= 0) || (hour >= 0) || (data == -1) || (week_day == -1))
@@ -386,15 +386,15 @@ void DS3231_set_alarm1(int8_t sec, int8_t min, int8_t hour, int8_t data, int8_t 
 		one = min % 10;
 		DAT[0] = AL1_MIN;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		ten = hour / 10;
 		one = hour % 10;
 		DAT[0] = AL1_HOUR;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL1_DAY_DATA;
 		DAT[1] = 0b10000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 	}
 	// Звонок в назначенную секунду, минуту, час и день месяца
 	if ((sec >= 0) || (min >= 0) || (hour >= 0) || (data >= 0) || (week_day == -1))
@@ -407,17 +407,17 @@ void DS3231_set_alarm1(int8_t sec, int8_t min, int8_t hour, int8_t data, int8_t 
 		one = min % 10;
 		DAT[0] = AL1_MIN;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		ten = hour / 10;
 		one = hour % 10;
 		DAT[0] = AL1_HOUR;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		ten = data / 10;
 		one = data % 10;
 		DAT[0] = AL1_DAY_DATA;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 	}
 	// Звонок в назначенную секунду минуту, час и день недели
 	if ((sec >= 0) || (min >= 0) || (hour >= 0) || (data == -1) || (week_day >= 0))
@@ -430,30 +430,30 @@ void DS3231_set_alarm1(int8_t sec, int8_t min, int8_t hour, int8_t data, int8_t 
 		one = min % 10;
 		DAT[0] = AL1_MIN;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		ten = hour / 10;
 		one = hour % 10;
 		DAT[0] = AL1_HOUR;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		//ten = data / 10;
 		//one = data % 10;
 		DAT[0] = AL1_DAY_DATA;
 		DAT[1] = (0b01000000 | week_day);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 	}	
 }
 //===================================================================================================================
 void DS3231_alarm1_deinit(void)
 {
 	uint8_t DAT[2] = {CONTROL};
-	I2C_write_read(1, &CONTROL, 1, &DAT[1], 1);
+	I2C_write_read(&CONTROL, 1, &DAT[1], 1);
 	if (~DAT[1] & (1 << A2F)) // Если при этом 2 будильник уже отключен то отключаем прерывания
 	{
 		gpio_intr_disable(INTERR_PIN);
 	}
 	DAT[1] &= ~((1 << INTCN) | (1 << A1IE));
-	I2C_write(1, DAT, 2);
+	I2C_write(DAT, 2);
 }
 //===================================================================================================================
 void DS3231_set_alarm2(const int8_t sec, const int8_t min, const int8_t hour, const int8_t data, const int8_t week_day)
@@ -473,15 +473,15 @@ void DS3231_set_alarm2(const int8_t sec, const int8_t min, const int8_t hour, co
 	uint8_t ten;
 	uint8_t one;
 	uint8_t DAT[2];
-	I2C_write_read(1, &CONTROL, 1, &DAT[1], 1);
+	I2C_write_read(&CONTROL, 1, &DAT[1], 1);
 	DAT[0] = CONTROL;
 	DAT[1] |= (1 << INTCN) | (1 << A2IE);	
-	I2C_write(1, DAT, 2);
+	I2C_write(DAT, 2);
 	// Сбрасываем возможные прерывыния от будильников 1 и 2
 	DAT[0] = STATUS;
-	I2C_write_read(1, &STATUS, 1, &DAT[1], 1);
+	I2C_write_read(&STATUS, 1, &DAT[1], 1);
 	DAT[1] &= ~((1 << A1F) | (1 << A2F));
-	I2C_write(1, DAT, 2);
+	I2C_write(DAT, 2);
 	// Ошибка ввода - отключаем будильник
 	if ((sec == -1) || (min == -1) || (hour == -1) || (data == -1) || (week_day == -1)) DS3231_alarm2_deinit();
 	
@@ -490,11 +490,11 @@ void DS3231_set_alarm2(const int8_t sec, const int8_t min, const int8_t hour, co
 	{
 		DAT[0] = AL2_MIN;
 		DAT[1] = 0b10000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL2_HOUR;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL2_DAY_DATA;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 	}
 	// Звонок в назначенную минуту
 	if ((sec == -1) || (min >= 0) || (hour == -1) || (data == -1) || (week_day == -1))
@@ -503,13 +503,13 @@ void DS3231_set_alarm2(const int8_t sec, const int8_t min, const int8_t hour, co
 		one = min % 10;
 		DAT[0] = AL2_MIN;
 		DAT[1] = (0b10000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL2_HOUR;
 		DAT[1] = 0b10000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL2_DAY_DATA;
 		DAT[1] = 0b00000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 	}
 	// Звонок в назначенную минуту и час
 	if ((sec == -1) || (min >= 0) || (hour >= 0) || (data == -1) || (week_day == -1))
@@ -518,15 +518,15 @@ void DS3231_set_alarm2(const int8_t sec, const int8_t min, const int8_t hour, co
 		one = min % 10;
 		DAT[0] = AL2_MIN;
 		DAT[1] = (0b10000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		ten = hour / 10;
 		one = hour % 10;
 		DAT[0] = AL2_HOUR;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		DAT[0] = AL2_DAY_DATA;
 		DAT[1] = 0b00000000;
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 	}
 	// Звонок в назначенную минуту, час и день месяца
 	if ((sec == -1) || (min >= 0) || (hour >= 0) || (data >= 0) || (week_day == -1))
@@ -535,17 +535,17 @@ void DS3231_set_alarm2(const int8_t sec, const int8_t min, const int8_t hour, co
 		one = min % 10;
 		DAT[0] = AL2_MIN;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		ten = hour / 10;
 		one = hour % 10;
 		DAT[0] = AL2_HOUR;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		ten = data / 10;
 		one = data % 10;
 		DAT[0] = AL2_DAY_DATA;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 	}
 	// Звонок в назначенную минуту, час и день недели
 	if ((sec == -1) || (min >= 0) || (hour >= 0) || (data == -1) || (week_day >= 0))
@@ -554,59 +554,32 @@ void DS3231_set_alarm2(const int8_t sec, const int8_t min, const int8_t hour, co
 		one = min % 10;
 		DAT[0] = AL2_MIN;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		ten = hour / 10;
 		one = hour % 10;
 		DAT[0] = AL2_HOUR;
 		DAT[1] = (0b00000000 | (ten << 4) | one);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 		//ten = data / 10;
 		//one = data % 10;
 		DAT[0] = AL2_DAY_DATA;
 		DAT[1] = (0b01000000 | week_day);
-		I2C_write(1, DAT, 2);
+		I2C_write(DAT, 2);
 	}	
 }
 //===================================================================================================================
 void DS3231_alarm2_deinit(void)
 {
 	uint8_t DAT[2] = {CONTROL};
-	I2C_write_read(1, &CONTROL, 1, &DAT[1], 1);	
+	I2C_write_read(&CONTROL, 1, &DAT[1], 1);	
 	if (~DAT[1] & (1 << A1F)) // Если при этом 1 будильник уже отключен то отключаем прерывания
 	{
 		gpio_intr_disable(INTERR_PIN);
 	}
 	DAT[1] &= ~((1 << INTCN) | (1 << A2IE));	
-	I2C_write(1, DAT, 2);
+	I2C_write(DAT, 2);
 }
-//===================================================================================================================
-/*
-void interrupt_init(void)
-{
-	//IRAM_ATTR isrButtonPress();
-	gpio_install_isr_service(0);
-	//Настраиваем GPIO_12 на вход
-	gpio_set_direction(INTERR_PIN, GPIO_MODE_INPUT);
-	// Устанавливаем тип события для генерации прерывания - по спаду
-	gpio_set_intr_type(INTERR_PIN, GPIO_INTR_NEGEDGE);
-	// Регистрируем обработчик прерывания на GPIO_19
-	gpio_isr_handler_add(INTERR_PIN, isrButtonPress, (void *)INTERR_PIN);
-	// Разрешаем использование прерываний
-	//gpio_intr_enable(INPUT_PIN);
-}
-*/
-//===================================================================================================================
-/*
-// Обработчик прерывания
-static void IRAM_ATTR isrButtonPress(void* arg)
-{
-	uint8_t fl = 0;
-	//int pinNumber = (int)arg;
-	// Передаём в очередь значение флага fl
-	xQueueSendFromISR(interputQueue, &fl, NULL);
-}
-*/
-//===================================================================================================================
+
 
 //===================================================================================================================
 

@@ -17,7 +17,7 @@ i2c_master_bus_handle_t bus_handle;
 i2c_master_dev_handle_t rtc_handle;
 i2c_master_dev_handle_t bme280_handle;
 //===================================================================================================================
-void I2C_init(uint8_t rtc_addr, uint8_t bme280_addr)
+void I2C_init(uint8_t dev_addr)
 {
 	i2c_master_bus_config_t i2c_mst_config = {
 	.clk_source = I2C_CLK_SRC_APB,
@@ -32,60 +32,31 @@ void I2C_init(uint8_t rtc_addr, uint8_t bme280_addr)
 		
 	i2c_device_config_t dev_rtc = {
 	.dev_addr_length = I2C_ADDR_BIT_LEN_7,
-	.device_address = rtc_addr,
+	.device_address = dev_addr,
 	.scl_speed_hz = 100000,
 	};
 		
 	ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_rtc, &rtc_handle));
 		
-	i2c_device_config_t dev_bme280 = {
-	.dev_addr_length = I2C_ADDR_BIT_LEN_7,
-	.device_address = bme280_addr,
-	.scl_speed_hz = 100000,
-	};
-				
-	ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_bme280, &bme280_handle));
-		
 	}
 //===================================================================================================================
-void I2C_write(uint8_t dev_number, const uint8_t *p, const uint8_t write_size)
+void I2C_write(const uint8_t *p, const uint8_t write_size)
 {
-	if (dev_number == 1)
-	{
-		ESP_ERROR_CHECK(i2c_master_transmit(rtc_handle, p, write_size, -1));
-		vTaskDelay(1 / portTICK_PERIOD_MS);
-	}
-	else if (dev_number == 2)
-	{
-		ESP_ERROR_CHECK(i2c_master_transmit(bme280_handle, p, write_size, -1));
-		vTaskDelay(1 / portTICK_PERIOD_MS);
-	}
+	ESP_ERROR_CHECK(i2c_master_transmit(rtc_handle, p, write_size, -1));
+	vTaskDelay(1 / portTICK_PERIOD_MS);
+
 }
 //===================================================================================================================
-void I2C_read(uint8_t dev_number, uint8_t *p, uint8_t read_size)
+void I2C_read(uint8_t *p, uint8_t read_size)
 {
-	if (dev_number == 1)
-	{
-		ESP_ERROR_CHECK(i2c_master_receive(rtc_handle, p, read_size, -1));
-		vTaskDelay(1 / portTICK_PERIOD_MS);
-	}
-	else if (dev_number == 2)
-	{
-		ESP_ERROR_CHECK(i2c_master_receive(bme280_handle, p, read_size, -1));
-		vTaskDelay(1 / portTICK_PERIOD_MS);
-	}
+	ESP_ERROR_CHECK(i2c_master_receive(rtc_handle, p, read_size, -1));
+	vTaskDelay(1 / portTICK_PERIOD_MS);
+
 }
 //===================================================================================================================
-void I2C_write_read(uint8_t dev_number, const uint8_t *write, const uint8_t size_write, uint8_t *read, const uint8_t size_read)
+void I2C_write_read(const uint8_t *write, const uint8_t size_write, uint8_t *read, const uint8_t size_read)
 {
-	if (dev_number == 1)
-	{
-		ESP_ERROR_CHECK(i2c_master_transmit_receive(rtc_handle, write, size_write, read, size_read, -1));
-		vTaskDelay(1 / portTICK_PERIOD_MS);
-	}
-	else if (dev_number == 1)
-	{
-		ESP_ERROR_CHECK(i2c_master_transmit_receive(bme280_handle, write, size_write, read, size_read, -1));
-		vTaskDelay(1 / portTICK_PERIOD_MS);
-	}
+	ESP_ERROR_CHECK(i2c_master_transmit_receive(rtc_handle, write, size_write, read, size_read, -1));
+	vTaskDelay(1 / portTICK_PERIOD_MS);
+
 }

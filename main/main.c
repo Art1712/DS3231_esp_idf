@@ -1,31 +1,14 @@
 #include "HEADER.h"
 #include "I2C_sourse.c"
 #include "DS3231.c"
-#include "BME280.c"
-#include "AHT10.c"
-#include "SD_Card.c"
-#include "driver/uart.h"
-#include "Light_Sleep.c"
 
-DAT current_data;
-/*
-// Переменная очереди
-QueueHandle_t interputQueue;
-
-// Обработчик прерывания
-static void IRAM_ATTR isrButtonPress(void* arg)
+void time(void *pvParameters)
 {
-	fl = !fl;
-	//int pinNumber = (int)arg;
-	// Передаём в очередь значение флага fl
-	xQueueSendFromISR(interputQueue, &fl, NULL);
-}
-*/
-void ttime(void *pvParameters)
-{
-	ESP_LOGI("ttime", "ttime started");
+	// Subscribe this task to TWDT, then check if it is subscribed
+	ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+	ESP_ERROR_CHECK(esp_task_wdt_status(NULL));
+	ESP_LOGI("time", "time started");
 
-	float temp = 0.0, hum = 0.0;
 	uint8_t H = 0x00;
 	uint8_t M = 0x00;
 	uint8_t S = 0x00;
@@ -38,52 +21,16 @@ void ttime(void *pvParameters)
 	char week_day[11];
 	char month[11];
 	
-	char buf[100];
-	
-	AHT10_init();
-	uint8_t st[2] = {STATUS, 0b10001000};
+	uint8_t sec_prev = 0, Da_prev = 0, MON_prev = 0;
 	
 	for (;;)
 	{
-	//if (xQueueReceive(interputQueue, &flag, portMAX_DELAY) == pdPASS)
-	//{
-		// Ожидаем пока все передачи по UART завершатся
-		uart_wait_tx_idle_polling(CONFIG_ESP_CONSOLE_UART_NUM);
-		//vTaskDelay(90);
-		// Переходим в режим LIGHT SLEEP
-		esp_light_sleep_start();
-		//esp_deep_sleep_start();
-		
-		// Сбрасываем флаги прерываний RTC после пробуждения 
-		I2C_write(1, st, 2);
-		printf("===================================\n");
-		// Сбрасываем флаги прерываний
-		AHT10_get_data(&temp, &hum);
 		DS3231_get_time(&H, &M, &S);
 		DS3231_get_data(&Da, &Dt, &MON, &YEA);
-		/*
-		{// Determine wake up reason
-		const char* wakeup_reason;
-			switch (esp_sleep_get_wakeup_cause()) {
-			case ESP_SLEEP_WAKEUP_TIMER:
-				wakeup_reason = "timer";
-			break;
-			case ESP_SLEEP_WAKEUP_GPIO:
-				wakeup_reason = "pin";
-			break;
-			case ESP_SLEEP_WAKEUP_UART:
-				wakeup_reason = "uart";
-				// Hang-up for a while to switch and execute the uart task
-				// Otherwise the chip may fall sleep again before running uart task
-				vTaskDelay(1);
-			break;
-			default:
-				wakeup_reason = "other";
-			break;
-			}
-		printf("%s\n", wakeup_reason);
-		}
-		*/
+		
+		if (Da_prev != Da)
+		{
+			// Преобразуем день недели в текстовое название
 			switch (Da)
 			{
 				case 1: strcpy(week_day, "Monday\n");
@@ -101,7 +48,12 @@ void ttime(void *pvParameters)
 				case 7: strcpy(week_day, "Sunday\n");
 				break;
 			}
-			
+			Da_prev = Da;
+		}
+		
+		if (MON_prev != MON)
+		{
+			// Преобразуем месяц в текстовое название
 			switch (MON)
 			{
 				case 1: strcpy(month, "January\n");
@@ -129,54 +81,42 @@ void ttime(void *pvParameters)
 				case 12: strcpy(month, "December\n");
 				break;
 			}
-		printf("%02u:%02u:%02u\n", H, M, S);
-		printf("%u %s %u\n", Dt, month, 2000 + YEA);
-		printf("Temp = %.0f deg C\tHum = %.0f%%\n", temp, hum);
+			MON_prev = MON;
+		}
 		
-		sprintf(buf, "%02u:%02u:%02u %u.%u.%u\nTemp = %.0f deg C\tHum = %.0f%%\n", H, M, S, Dt, MON, YEA, temp, hum);
-		SD_write_file_txt(buf);
+		if (sec_prev != S)
+		{
+			sec_prev = S;
+			// Выводим полученные данные в UART порт
+			printf("%02u:%02u:%02u\n", H, M, S);
+			printf("%s %s %u\n", week_day, month, 2000 + YEA);
+			printf("===================================\n");
+		}
 		
-		current_data.HOUR = H;
-		current_data.MINUTE = M;
-		current_data.SECOND = S;
-		current_data.DATA = Dt;
-		current_data.MONTH = MON;
-		current_data.YEAR = YEA;
-		current_data.W_D = week_day;
-		current_data.M_TH = month;
-		current_data.temperature = temp;
-		current_data.humidity = hum;
-		SD_write_file_dat(current_data);
-
-		//esp_task_wdt_reset();
+		esp_task_wdt_reset();
 	}
-	ESP_LOGI("temp_measurement", "temp_measurement error");
-	// Демонтируем флешку при ошибке задачи
-	sdcard_unmount();
-	//ESP_ERROR_CHECK(esp_task_wdt_delete(NULL));
+	
+	// Сюда мы не должны добраться никогда. Но если "что-то пошло не так" - нужно всё-таки удалить задачу из памяти
+	ESP_LOGI("time", "time error");
+	// Удаляем задачу для WDT
+	ESP_ERROR_CHECK(esp_task_wdt_delete(NULL));
 	vTaskDelete(NULL);
 }
 
 void app_main(void)
 {
-	I2C_init(0x68, 0x38); // Инициируем RTC
+	I2C_init(0x68); // Инициируем RTC
 	DS3231_init();
-	sdspi_init();
-	Light_Sleep_register_gpio_wakeup(27, 0);
-	//deep_sleep_register_ext0_wakeup();
-	//DS3231_alarm1_deinit();
-	//DS3231_alarm2_deinit();
-	DS3231_set_alarm1(0, 0, -1, -1, -1);
+	
+	// Установка времени
+	//DS3231_set_time(10, 10, 10);
+	//DS3231_set_data(6, 27, 9, 25);
+	
+	// Настройка будильников
+	//DS3231_set_alarm1(0, 0, -1, -1, -1);
 	//DS3231_set_alarm2(-1, 50, 12, -1, 2);
 	
-	/*
-	// Создаём очередь
-	interputQueue = xQueueCreate(2, sizeof(uint8_t));
-	if (interputQueue == NULL) {
-	  printf("Error creating message queue");
-	};
-	*/
-		
-	xTaskCreate(ttime, "ttimes", 2048, NULL, 0, NULL);
+	// Создаём задачу
+	xTaskCreate(time, "time", 2048, NULL, 0, NULL);
 
 }
